@@ -287,6 +287,9 @@ export default function Wallet(props) {
           <EtherInput
             price={props.price}
             value={amount}
+            contractAddress={selectedAddress}
+            provider={props.provider}
+            gasPrice={props.gasPrice}
             onChange={value => {
               setAmount(value);
             }}
@@ -324,11 +327,9 @@ export default function Wallet(props) {
       <Modal
         visible={open}
         title={
-          <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around" }}>
             {selectedAddress ? <Address address={selectedAddress} ensProvider={props.ensProvider} /> : <Spin />}
-            <div style={{ float: "right", paddingRight: 25 }}>
-              <Balance address={selectedAddress} provider={props.provider} dollarMultiplier={props.price} />
-            </div>
+            <Balance address={selectedAddress} provider={props.provider} dollarMultiplier={props.price} />
           </div>
         }
         onOk={() => {

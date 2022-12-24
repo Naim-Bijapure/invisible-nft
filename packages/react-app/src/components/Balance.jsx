@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useBalance } from "eth-hooks";
-import { getRPCPollTime } from "../helpers";
+import { BigNumber } from "ethers";
 
 const { utils } = require("ethers");
+const zero = BigNumber.from(0);
 
-/**
+/** 
   ~ What it does? ~
 
   Displays a balance of given address in ether & dollar
@@ -32,10 +33,26 @@ const { utils } = require("ethers");
 
 export default function Balance(props) {
   const [dollarMode, setDollarMode] = useState(true);
+  const [balance, setBalance] = useState();
+  const { provider, address } = props;
 
-  let localProviderPollingTime = getRPCPollTime(props.provider);
+  const balanceContract = useBalance(props.provider, props.address);
+  useEffect(() => {
+    setBalance(balanceContract);
+  }, [balanceContract]);
 
-  const balance = useBalance(props.provider, props.address, localProviderPollingTime);
+  useEffect(() => {
+    async function getBalance() {
+      if (provider && address) {
+        const newBalance = await provider.getBalance(address);
+        if (!newBalance.eq(balance ?? zero)) {
+          setBalance(newBalance);
+        }
+      }
+    }
+    getBalance();
+  }, [address, provider]);
+
   let floatBalance = parseFloat("0.00");
   let usingBalance = balance;
 
@@ -61,7 +78,7 @@ export default function Balance(props) {
       style={{
         verticalAlign: "middle",
         fontSize: props.size ? props.size : 24,
-        padding: 8,
+        padding: "0 0.5rem",
         cursor: "pointer",
       }}
       onClick={() => {
