@@ -1,35 +1,29 @@
-import React, { useEffect, useState } from "react";
-import { Typography, List, Avatar, Skeleton, Button } from "antd";
+import { Avatar, Divider, List, Skeleton, Typography } from "antd";
 import { ethers } from "ethers";
+import React, { useEffect, useState } from "react";
+import InfiniteScroll from "react-infinite-scroll-component";
 
-import { AddressInput } from "../components";
 import { useRef } from "react";
+import { AddressInput } from "../components";
 
 const { Title, Paragraph } = Typography;
 
-function Home({ _address, readContracts, localProvider, mainnetProvider }) {
+function Home({ readContracts, localProvider, mainnetProvider }) {
+  // default load 5 pages
+  const LOAD_COUNT = 5;
+
   const [tokenList, setTokenList] = useState([]);
   const [tokenURIs, setTokenURIs] = useState([]);
   const [address, setAddress] = useState(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [balance, setBalance] = useState(undefined);
-  // const [, setBalance] = useState(undefined);
-  const LOAD_COUNT = 5;
   const pageCountRef = useRef(0);
 
-  const loadNFTs = async () => {
-    let balance = await readContracts["casterContract"].balanceOf(address);
-    setBalance(balance.toString());
-    const filterTo = readContracts["casterContract"].filters.Transfer(null, address);
-    const filterFrom = readContracts["casterContract"].filters.Transfer(address);
-
-    const queryEventsTo = await readContracts["casterContract"].queryFilter(filterTo);
-    const queryEventsFrom = await readContracts["casterContract"].queryFilter(filterFrom);
-    // console.log(`n-🔴 => loadNFTs => queryEventsFrom`, queryEventsFrom);
-
-    const logs = queryEventsFrom
-      .concat(queryEventsTo)
-      .sort((a, b) => a.blockNumber - b.blockNumber || a.transactionIndex - b.transactionIndex);
+  // filter unique token uris
+  const filterTokenURIs = async logs => {
+    function addressEqual(a, b) {
+      return a.toLowerCase() === b.toLowerCase();
+    }
 
     const owned = new Set();
 
@@ -43,11 +37,24 @@ function Home({ _address, readContracts, localProvider, mainnetProvider }) {
       }
     }
 
-    function addressEqual(a, b) {
-      return a.toLowerCase() === b.toLowerCase();
-    }
+    return [...owned];
+  };
 
-    const tokenURIs = [...owned];
+  // load nft token uris
+  const loadNFTs = async () => {
+    let balance = await readContracts["casterContract"].balanceOf(address);
+    setBalance(Number(balance.toString()));
+    const filterTo = readContracts["casterContract"].filters.Transfer(null, address);
+    const filterFrom = readContracts["casterContract"].filters.Transfer(address);
+
+    const queryEventsTo = await readContracts["casterContract"].queryFilter(filterTo);
+    const queryEventsFrom = await readContracts["casterContract"].queryFilter(filterFrom);
+
+    const logs = queryEventsFrom
+      .concat(queryEventsTo)
+      .sort((a, b) => a.blockNumber - b.blockNumber || a.transactionIndex - b.transactionIndex);
+
+    const tokenURIs = await filterTokenURIs(logs);
     setTokenURIs(tokenURIs);
   };
 
@@ -59,7 +66,6 @@ function Home({ _address, readContracts, localProvider, mainnetProvider }) {
       "casterContract" in readContracts &&
       "shadowNFT" in readContracts
     ) {
-      setIsLoading(true);
       void loadNFTs();
     }
 
@@ -75,12 +81,17 @@ function Home({ _address, readContracts, localProvider, mainnetProvider }) {
   }, [tokenURIs]);
 
   const onLoadMore = async () => {
+    if (isLoading) {
+      return;
+    }
     const tokenData = [];
     setIsLoading(true);
 
+    // load nft tokens async
     const fromIndex = pageCountRef.current === 0 ? pageCountRef.current : pageCountRef.current + 1;
     const toIndex = pageCountRef.current + LOAD_COUNT;
 
+    // parse token uri json
     for (const tokenURI of tokenURIs.slice(fromIndex, toIndex + 1)) {
       let rawData;
       try {
@@ -99,18 +110,8 @@ function Home({ _address, readContracts, localProvider, mainnetProvider }) {
 
     setTokenList(prev => [...prev, ...tokenData]);
     setIsLoading(false);
-    pageCountRef.current = pageCountRef.current + LOAD_COUNT;
+    pageCountRef.current = balance === pageCountRef.current ? balance : pageCountRef.current + LOAD_COUNT;
   };
-
-  const loadMore = !isLoading ? (
-    <div
-      className={`text-center m-5 ${
-        balance <= 5 || balance === undefined || balance <= pageCountRef.current ? "hidden" : "visible"
-      }`}
-    >
-      <Button onClick={onLoadMore}>loading more</Button>
-    </div>
-  ) : null;
 
   return (
     <div className="flex flex-col items-center ">
@@ -139,24 +140,44 @@ function Home({ _address, readContracts, localProvider, mainnetProvider }) {
       </div>
 
       <div className="w-1/2 mt-10">
-        <List
-          itemLayout="horizontal"
-          size="large"
-          dataSource={tokenList}
-          loadMore={loadMore}
-          loading={isLoading}
-          renderItem={item => (
-            <Skeleton avatar title={"loading"} loading={item.loading} active>
-              <List.Item>
-                <List.Item.Meta
-                  avatar={<Avatar size={120} src={item.image} />}
-                  title={<div className="mt-3">{item.name}</div>}
-                  description={item.description}
-                />
-              </List.Item>
-            </Skeleton>
-          )}
-        />
+        <div id="scrollableDiv" className="overflow-auto w-full max-h-96">
+          <InfiniteScroll
+            dataLength={tokenList.length}
+            next={onLoadMore}
+            hasMore={balance ? Number(balance) !== Number(pageCountRef.current) : ""}
+            loader={
+              <Skeleton
+                avatar
+                title
+                paragraph={{
+                  rows: 1,
+                }}
+                active
+              />
+            }
+            endMessage={
+              balance !== undefined && (
+                <Divider plain className="opacity-70">
+                  loaded all nft's
+                </Divider>
+              )
+            }
+            scrollableTarget="scrollableDiv"
+          >
+            <List
+              dataSource={tokenList}
+              renderItem={item => (
+                <List.Item key={item.email}>
+                  <List.Item.Meta
+                    avatar={<Avatar size={120} src={item.image} />}
+                    title={<div className="mt-3">{item.name}</div>}
+                    description={item.description}
+                  />
+                </List.Item>
+              )}
+            />
+          </InfiniteScroll>
+        </div>
       </div>
     </div>
   );

@@ -308,12 +308,7 @@ function App(props) {
         logoutOfWeb3Modal={logoutOfWeb3Modal}
         USE_NETWORK_SELECTOR={USE_NETWORK_SELECTOR}
       />
-      <Home
-        address={address}
-        localProvider={localProvider}
-        mainnetProvider={mainnetProvider}
-        readContracts={readContracts}
-      />
+      <Home localProvider={localProvider} mainnetProvider={mainnetProvider} readContracts={readContracts} />
 
       {/* <Menu style={{ textAlign: "center", marginTop: 20 }} selectedKeys={[location.pathname]} mode="horizontal">
         <Menu.Item key="/">
