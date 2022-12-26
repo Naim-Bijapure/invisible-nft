@@ -5,7 +5,7 @@
       "chainId": "1",
       "contracts": {
         "shadowNFT": {
-          "address": "0xC5d5859A6022c174B2CcABe2f92d7c5A1503f4cb",
+          "address": "0x52f3EF977109d3CcaAAcD89685A6400AD3606B96",
           "abi": [
             {
               "inputs": [
