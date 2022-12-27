@@ -1,13 +1,12 @@
-import { Avatar, Divider, List, Skeleton, Typography, Dropdown, Menu } from "antd";
-import { DownOutlined, UserOutlined } from "@ant-design/icons";
+import { Avatar, Divider, List, Skeleton, Typography } from "antd";
 
 import { ethers } from "ethers";
 import React, { useEffect, useState } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 
 import { useRef } from "react";
-import { AddressInput } from "../components";
 import mainnetNft from "../abi's/mainnetNFT.json";
+import { AddressInput } from "../components";
 
 const { Title, Paragraph } = Typography;
 
@@ -22,30 +21,20 @@ const shadowAddresses = [
   { name: "ENS Open Peeps Avatars", address: "0x5784953dbeb3a764761b5bffe0f32e9c14e32482" },
   { name: "ENS Miniavs Avatars", address: "0x5A325AC1b2807825BDDecF8393Ff8eE5FE3EbA37" },
   { name: "ENS Robohash Monster Avatars", address: "0xc5d5859a6022c174b2ccabe2f92d7c5a1503f4cb" },
-  { name: "On-chain Blockies", address: "0x7e902c638db299307565062dc7cd0397431bcb11" },
+  // { name: "On-chain Blockies", address: "0x7e902c638db299307565062dc7cd0397431bcb11" },
 ];
 
 function Home({ readContracts, localProvider, mainnetProvider }) {
   // default load 5 pages
-  const LOAD_COUNT = 5;
-
-  const [selectedShadowNFT, setSelectedShadowNFT] = useState(undefined);
-  const [loadedShadowContract, setLoadedShadowContract] = useState(undefined);
+  const LOAD_COUNT = 1;
 
   const [tokenList, setTokenList] = useState([]);
   const [tokenURIs, setTokenURIs] = useState([]);
   const [address, setAddress] = useState(undefined);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const [balance, setBalance] = useState(undefined);
+  const [toggleLoadMore, setToggleLoadMore] = useState(false);
   const pageCountRef = useRef(0);
-
-  const menu = (
-    <Menu>
-      {shadowAddresses.map(item => (
-        <Menu.Item onClick={() => setSelectedShadowNFT(item)}>{item.name}</Menu.Item>
-      ))}
-    </Menu>
-  );
 
   /**
    methods
@@ -71,6 +60,33 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
     return [...owned];
   };
 
+  /**
+   get shadow json data for each shadow contract
+  */
+  const getShadowNFTjson = async tokenURI => {
+    let rawData;
+    let finaJsonData = [];
+
+    for (const { address } of shadowAddresses) {
+      let shadowContract = new ethers.Contract(address, mainnetNft[1].mainnet.contracts.shadowNFT.abi, localProvider);
+
+      try {
+        rawData = await shadowContract.tokenURI(tokenURI);
+
+        rawData = rawData.replace("data:application/json;charset=utf-8,", "");
+        let jsonData = JSON.parse(rawData);
+        jsonData.loading = false;
+
+        finaJsonData.push(jsonData);
+      } catch (error) {
+        console.log(`n-🔴 => loadNFTs => error`, error);
+        break;
+      }
+    }
+
+    return finaJsonData;
+  };
+
   // load nft token uris
   const loadTokenURIs = async () => {
     let balance = await readContracts["casterContract"].balanceOf(address);
@@ -86,46 +102,40 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
       .sort((a, b) => a.blockNumber - b.blockNumber || a.transactionIndex - b.transactionIndex);
 
     const tokenURIs = await filterTokenURIs(logs);
+
     setTokenURIs(tokenURIs);
   };
 
   const onLoadMore = async () => {
-    if (isLoading) {
-      return;
-    }
-
     if (balance <= LOAD_COUNT) {
       setTokenList([{ loading: true }]);
     }
 
+    // setIsLoading(true);
     const tokenData = [];
-    setIsLoading(true);
+
+    pageCountRef.current = balance === pageCountRef.current ? balance : pageCountRef.current + LOAD_COUNT;
 
     // load nft tokens async
-    const fromIndex = pageCountRef.current === 0 ? pageCountRef.current : pageCountRef.current + 1;
-    const toIndex = pageCountRef.current + LOAD_COUNT;
+    const fromIndex = pageCountRef.current === 0 ? pageCountRef.current : pageCountRef.current - 1;
+    const toIndex = pageCountRef.current;
+    let isEmpty = false;
 
     // parse token uri json
-    for (const tokenURI of tokenURIs.slice(fromIndex, toIndex + 1)) {
-      let rawData;
-      try {
-        // rawData = await readContracts["shadowNFT"].tokenURI(tokenURI);
-        rawData = await loadedShadowContract.tokenURI(tokenURI);
-
-        rawData = rawData.replace("data:application/json;charset=utf-8,", "");
-        let jsonData = JSON.parse(rawData);
-        jsonData.loading = false;
-
-        tokenData.push(jsonData);
-      } catch (error) {
-        console.log(`n-🔴 => loadNFTs => error`, error);
-        continue;
+    for (const tokenURI of tokenURIs.slice(fromIndex, toIndex)) {
+      let nftJsonData = await getShadowNFTjson(tokenURI);
+      if (nftJsonData.length > 0) {
+        tokenData.push(nftJsonData);
+      } else {
+        isEmpty = true;
       }
     }
 
-    setTokenList(prev => [...prev, ...tokenData].filter(data => data.loading === false));
-    setIsLoading(false);
-    pageCountRef.current = balance === pageCountRef.current ? balance : pageCountRef.current + LOAD_COUNT;
+    if (isEmpty) {
+      setToggleLoadMore(!toggleLoadMore);
+      return;
+    }
+    setTokenList(prev => [...prev, ...tokenData.flat()].filter(data => data.loading === false));
   };
 
   /**
@@ -141,8 +151,7 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
       ethers.utils.isAddress(address) &&
       localProvider &&
       "casterContract" in readContracts &&
-      "shadowNFT" in readContracts &&
-      loadedShadowContract !== undefined
+      "shadowNFT" in readContracts
     ) {
       setTokenList([{ loading: true }]);
       void loadTokenURIs();
@@ -156,7 +165,7 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
   }, [localProvider, readContracts, address]);
 
   /**
-   on token uri load load  tokens at start
+   on token uri load   tokens at start
   */
   useEffect(() => {
     if (tokenURIs.length > 0) {
@@ -164,32 +173,9 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
     }
   }, [tokenURIs]);
 
-  /**
-   set shadow contract instance
-  */
   useEffect(() => {
-    if (selectedShadowNFT) {
-      let shadowContract = new ethers.Contract(
-        selectedShadowNFT.address,
-        mainnetNft[1].mainnet.contracts.shadowNFT.abi,
-        localProvider,
-      );
-      setLoadedShadowContract(shadowContract);
-    }
-  }, [selectedShadowNFT]);
-
-  /**
-   reset default loaded nfts on ui on change of new shadow nft type
-  */
-  useEffect(() => {
-    if (loadedShadowContract) {
-      if (balance !== undefined) {
-        pageCountRef.current = 0;
-        setTokenList([]);
-        onLoadMore();
-      }
-    }
-  }, [loadedShadowContract]);
+    void onLoadMore();
+  }, [toggleLoadMore]);
 
   return (
     <div className="flex flex-col items-center ">
@@ -203,12 +189,6 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
       </div>
 
       <div className="w-1/2 mt-5">
-        <div className="mb-2">
-          <Dropdown.Button overlay={menu}>
-            {selectedShadowNFT !== undefined ? selectedShadowNFT.name : "Select shadow nft"}
-          </Dropdown.Button>
-        </div>
-
         <AddressInput
           placeholder="enter ens address"
           autoFocus
@@ -218,13 +198,7 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
         />
         {balance !== undefined && (
           <div className="mt-2">
-            <span className="opacity-60">{balance} invisible nft's found</span>
-          </div>
-        )}
-
-        {loadedShadowContract === undefined && address && (
-          <div className="mt-2">
-            <span className="opacity-60 text-red-500">please select shadow nft type first</span>
+            <span className="opacity-60">{balance * shadowAddresses.length} invisible nft's found</span>
           </div>
         )}
       </div>
