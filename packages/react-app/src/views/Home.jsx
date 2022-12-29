@@ -1,14 +1,20 @@
-import { Avatar, Divider, List, Skeleton, Typography } from "antd";
+import { Avatar, Divider, List, Skeleton, Typography, Button, Tooltip } from "antd";
 
 import { ethers } from "ethers";
 import React, { useEffect, useState } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 
 import { useRef } from "react";
+import namehash from "eth-ens-namehash";
+
 import mainnetNft from "../abi's/mainnetNFT.json";
 import { AddressInput } from "../components";
+import EnsGoerli from "../abi's/ENS_Goerli.json";
 
 const { Title, Paragraph } = Typography;
+
+const ENS_RESOLVER_GOERLI = "0xE264d5bb84bA3b8061ADC38D3D76e6674aB91852";
+const ENS_RESOLVER_MAINNET = "0x4976fb03c32e5b8cfe2b6ccb31c09ba78ebaba41";
 
 const shadowAddresses = [
   { name: "ENS Adventurer Avatar", address: "0x52f3ef977109d3ccaaacd89685a6400ad3606b96" },
@@ -22,16 +28,18 @@ const shadowAddresses = [
   { name: "ENS Miniavs Avatars", address: "0x5A325AC1b2807825BDDecF8393Ff8eE5FE3EbA37" },
   { name: "ENS Robohash Monster Avatars", address: "0xc5d5859a6022c174b2ccabe2f92d7c5a1503f4cb" },
   // { name: "On-chain Blockies", address: "0x7e902c638db299307565062dc7cd0397431bcb11" },
+
+  // goerli addrss
+  // { name: "ENS Robohash Monster Avatars", address: "0xd4967857472c915bB2C66FD48095F1FAaC85B2C9" },
 ];
 
-function Home({ readContracts, localProvider, mainnetProvider }) {
+function Home({ address, readContracts, localProvider, mainnetProvider, userSigner, tx }) {
   // default load 5 pages
   const LOAD_COUNT = 1;
 
   const [tokenList, setTokenList] = useState([]);
   const [tokenURIs, setTokenURIs] = useState([]);
-  const [address, setAddress] = useState(undefined);
-  // const [isLoading, setIsLoading] = useState(false);
+  const [searchAddress, setSearchAddress] = useState(undefined);
   const [balance, setBalance] = useState(undefined);
   const [toggleLoadMore, setToggleLoadMore] = useState(false);
   const pageCountRef = useRef(0);
@@ -39,6 +47,7 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
   /**
    methods
   */
+
   // filter unique token uris
   const filterTokenURIs = async logs => {
     function addressEqual(a, b) {
@@ -50,9 +59,9 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
     for (const {
       args: { from, to, tokenId },
     } of logs) {
-      if (addressEqual(to, address)) {
+      if (addressEqual(to, searchAddress)) {
         owned.add(tokenId.toString());
-      } else if (addressEqual(from, address)) {
+      } else if (addressEqual(from, searchAddress)) {
         owned.delete(tokenId.toString());
       }
     }
@@ -75,7 +84,10 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
 
         rawData = rawData.replace("data:application/json;charset=utf-8,", "");
         let jsonData = JSON.parse(rawData);
+        jsonData.tokenURI = tokenURI;
+        jsonData.tokenAddress = address;
         jsonData.loading = false;
+        // console.log(`n-🔴 => getShadowNFTjson => jsonData`, jsonData);
 
         finaJsonData.push(jsonData);
       } catch (error) {
@@ -89,10 +101,10 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
 
   // load nft token uris
   const loadTokenURIs = async () => {
-    let balance = await readContracts["casterContract"].balanceOf(address);
+    let balance = await readContracts["casterContract"].balanceOf(searchAddress);
     setBalance(Number(balance.toString()));
-    const filterTo = readContracts["casterContract"].filters.Transfer(null, address);
-    const filterFrom = readContracts["casterContract"].filters.Transfer(address);
+    const filterTo = readContracts["casterContract"].filters.Transfer(null, searchAddress);
+    const filterFrom = readContracts["casterContract"].filters.Transfer(searchAddress);
 
     const queryEventsTo = await readContracts["casterContract"].queryFilter(filterTo);
     const queryEventsFrom = await readContracts["casterContract"].queryFilter(filterFrom);
@@ -102,6 +114,7 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
       .sort((a, b) => a.blockNumber - b.blockNumber || a.transactionIndex - b.transactionIndex);
 
     const tokenURIs = await filterTokenURIs(logs);
+    // console.log(`n-🔴 => loadTokenURIs => tokenURIs`, tokenURIs);
 
     setTokenURIs(tokenURIs);
   };
@@ -138,6 +151,44 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
     setTokenList(prev => [...prev, ...tokenData.flat()].filter(data => data.loading === false));
   };
 
+  const onVisibleNFT = async item => {
+    let shadowContract = new ethers.Contract(
+      item.tokenAddress,
+      mainnetNft[1].mainnet.contracts.shadowNFT.abi,
+      userSigner,
+    );
+
+    const selfTransferEventTx = tx(shadowContract.emitSelfTransferEvent(item.tokenURI), update => {
+      console.log("📡 Transaction Update:", update);
+      if (update && (update.status === "confirmed" || update.status === 1)) {
+        console.log("🍾 Transaction " + update.hash + " finished!");
+      }
+    });
+    const selfTransferEventRcpt = await selfTransferEventTx;
+  };
+
+  const onSetProfile = async item => {
+    console.log(`n-🔴 => onSetProfile => item`, item);
+
+    const ENSContract = new ethers.Contract(ENS_RESOLVER_MAINNET, EnsGoerli.abi, userSigner);
+    var ensName = await localProvider.lookupAddress(searchAddress);
+
+    const node = namehash.hash(ensName);
+    // set record formate eg:
+    // eip155:1/[NFT standard]:[contract address for NFT collection]/[token ID or the number that it is in the collection]
+    // eip155:1/erc721:0x55d5f37f0de6acc94380c58255e8321e66288577/19874724432705593828830788763869663074267578667212763671097794968539576690602
+
+    const nftData = `eip155:1/erc721:${item.tokenAddress}/${item.tokenURI}`;
+
+    const setTextTx = tx(ENSContract.setText(node, "avatar", nftData), update => {
+      console.log("📡 Transaction Update:", update);
+      if (update && (update.status === "confirmed" || update.status === 1)) {
+        console.log("🍾 Transaction " + update.hash + " finished!");
+      }
+    });
+    const setTextTxRcpt = await setTextTx;
+  };
+
   /**
    useEffects
   */
@@ -147,8 +198,8 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
  */
   useEffect(() => {
     if (
-      address !== undefined &&
-      ethers.utils.isAddress(address) &&
+      searchAddress !== undefined &&
+      ethers.utils.isAddress(searchAddress) &&
       localProvider &&
       "casterContract" in readContracts &&
       "shadowNFT" in readContracts
@@ -157,12 +208,12 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
       void loadTokenURIs();
     }
 
-    if (!address) {
+    if (!searchAddress) {
       setTokenList([]);
       setBalance(undefined);
       pageCountRef.current = 0;
     }
-  }, [localProvider, readContracts, address]);
+  }, [localProvider, readContracts, searchAddress]);
 
   /**
    on token uri load   tokens at start
@@ -192,9 +243,10 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
         <AddressInput
           placeholder="enter ens address"
           autoFocus
+          // ensProvider={localProvider}
           ensProvider={mainnetProvider}
-          address={address}
-          onChange={setAddress}
+          address={searchAddress}
+          onChange={setSearchAddress}
         />
         {balance !== undefined && (
           <div className="mt-2">
@@ -240,7 +292,25 @@ function Home({ readContracts, localProvider, mainnetProvider }) {
                   active
                   loading={item.loading}
                 >
-                  <List.Item key={item.image}>
+                  <List.Item
+                    key={item.image}
+                    actions={[
+                      address === searchAddress && (
+                        <Tooltip title="Make this NFT visible on your account at opensea">
+                          <Button type="link" onClick={() => onVisibleNFT(item)}>
+                            visible nft
+                          </Button>
+                        </Tooltip>
+                      ),
+                      address === searchAddress && (
+                        <Tooltip title="Set this NFT as ENS avatar">
+                          <Button type="link" onClick={() => onSetProfile(item)}>
+                            set profile
+                          </Button>
+                        </Tooltip>
+                      ),
+                    ]}
+                  >
                     <List.Item.Meta
                       avatar={<Avatar size={120} src={item.image} />}
                       title={<div className="mt-3">{item.name}</div>}

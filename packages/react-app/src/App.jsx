@@ -57,6 +57,7 @@ const { ethers } = require("ethers");
 
 /// 📡 What chain are your contracts deployed to?
 const initialNetwork = NETWORKS.mainnet; // <------- select your target frontend network (localhost, goerli, xdai, mainnet)
+// const initialNetwork = NETWORKS.goerli; // <------- select your target frontend network (localhost, goerli, xdai, mainnet)
 
 // 😬 Sorry for all the console logging
 const DEBUG = true;
@@ -308,7 +309,14 @@ function App(props) {
         logoutOfWeb3Modal={logoutOfWeb3Modal}
         USE_NETWORK_SELECTOR={USE_NETWORK_SELECTOR}
       />
-      <Home localProvider={localProvider} mainnetProvider={mainnetProvider} readContracts={readContracts} />
+      <Home
+        address={address}
+        localProvider={localProvider}
+        mainnetProvider={mainnetProvider}
+        readContracts={readContracts}
+        userSigner={userSigner}
+        tx={tx}
+      />
 
       {/* <Menu style={{ textAlign: "center", marginTop: 20 }} selectedKeys={[location.pathname]} mode="horizontal">
         <Menu.Item key="/">

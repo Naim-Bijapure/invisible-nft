@@ -17,16 +17,35 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId();
 
-  await deploy("YourContract", {
+  // await deploy("YourContract", {
+  //   // Learn more about args here: https://www.npmjs.com/package/hardhat-deploy#deploymentsdeploy
+  //   from: deployer,
+  //   // args: [ "Hello", ethers.utils.parseEther("1.5") ],
+  //   log: true,
+  //   waitConfirmations: 5,
+  // });
+
+  // Getting a previously deployed contract
+  // const YourContract = await ethers.getContract("YourContract", deployer);
+
+  await deploy("ShadowNFT", {
     // Learn more about args here: https://www.npmjs.com/package/hardhat-deploy#deploymentsdeploy
     from: deployer,
-    // args: [ "Hello", ethers.utils.parseEther("1.5") ],
+    args: [
+      "ENS Robohash Avatars",
+      "ENS Robohash Avatar",
+      "https://robohash.org/",
+      ".png?set=set2&size=1200x1200&bgs",
+      "ENS Avatars using Robohash created by Zikri Kader. They are available under CC-BY-3.0 or CC-BY-4.0 license",
+    ],
     log: true,
     waitConfirmations: 5,
   });
 
   // Getting a previously deployed contract
-  const YourContract = await ethers.getContract("YourContract", deployer);
+  const ShadowNFT = await ethers.getContract("ShadowNFT", deployer);
+  console.log(`n-🔴 => module.exports= => ShadowNFT`, ShadowNFT.address);
+
   /*  await YourContract.setPurpose("Hello");
   
     // To take ownership of yourContract using the ownable library uncomment next line and add the 
@@ -79,4 +98,4 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   //   console.error(error);
   // }
 };
-module.exports.tags = ["YourContract"];
+module.exports.tags = ["ShadowNFT"];
