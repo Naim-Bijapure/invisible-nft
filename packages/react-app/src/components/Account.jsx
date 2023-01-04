@@ -68,45 +68,25 @@ export default function Account({
 
   return (
     <div className="flex">
-      <div
-        // style={
-        //   {
-        // border: "1px solid #d9d9d9",
-        // borderRadius: "9999px",
-        // paddingLeft: "0.875rem",
-        // display: "flex",
-        // alignItems: "center",
-        //   }
-        // }
-        className="border border-gray-300  flex items-center rounded-3xl "
-      >
-        <Balance address={address} provider={localProvider} price={price} size={"1.125rem"} />
-        <Wallet
-          address={address}
-          provider={localProvider}
-          signer={userSigner}
-          ensProvider={mainnetProvider}
-          price={price}
-          color={currentTheme === "light" ? "#1890ff" : "#2caad9"}
-          size={"1.4rem"}
-          padding={"0px"}
-          gasPrice={gasPrice}
-        />
-        <div
-          // style={
-          //   {
-          // border: "1px solid transparent",
-          // borderRadius: "9999px",
-          // backgroundColor: currentTheme === "light" ? "#f1f5f9" : "#262626",
-          // marginLeft: "0.5rem",
-          // padding: "0.375rem 0.875rem",
-          //   }
-          // }
-          className={`border-2  rounded-3xl  ml-2 p-1 ${
-            currentTheme === "light" ? "border-gray-200 bg-gray-100" : "border-gray-500 bg-gray-800"
-          }`}
-        >
-          {address && (
+      {address && (
+        <div className="border border-gray-300  flex items-center rounded-3xl ">
+          <Balance address={address} provider={localProvider} price={price} size={"1.125rem"} />
+          <Wallet
+            address={address}
+            provider={localProvider}
+            signer={userSigner}
+            ensProvider={mainnetProvider}
+            price={price}
+            color={currentTheme === "light" ? "#1890ff" : "#2caad9"}
+            size={"1.4rem"}
+            padding={"0px"}
+            gasPrice={gasPrice}
+          />
+          <div
+            className={`border-2  rounded-3xl  ml-2 p-1 ${
+              currentTheme === "light" ? "border-gray-200 bg-gray-100" : "border-gray-500 bg-gray-800"
+            }`}
+          >
             <Address
               address={address}
               ensProvider={mainnetProvider}
@@ -115,9 +95,9 @@ export default function Account({
               blockieSize={8}
               fontSize={16}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
       <Button
         // style={{ verticalAlign: "top", marginLeft: 8, height: "auto" }}
         className="ml-2"

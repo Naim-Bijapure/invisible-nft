@@ -10,6 +10,7 @@ import namehash from "eth-ens-namehash";
 import mainnetNft from "../abi's/mainnetNFT.json";
 import { AddressInput } from "../components";
 import EnsGoerli from "../abi's/ENS_Goerli.json";
+import EnsMainnet from "../abi's/ENS_Mainnet.json";
 
 const { Title, Paragraph } = Typography;
 
@@ -17,6 +18,7 @@ const ENS_RESOLVER_GOERLI = "0xE264d5bb84bA3b8061ADC38D3D76e6674aB91852";
 const ENS_RESOLVER_MAINNET = "0x4976fb03c32e5b8cfe2b6ccb31c09ba78ebaba41";
 
 const shadowAddresses = [
+  //FIXME:mainnet chain address
   { name: "ENS Adventurer Avatar", address: "0x52f3ef977109d3ccaaacd89685a6400ad3606b96" },
   { name: "ENS Cat Avatars", address: "0x3be7b78a0677f95539c3aca821888b1a534afd68" },
   { name: "ENS Adventurer Neutral Avatar", address: "0xfd1c6a720af44e021a89d0521cccbf1e1060e843" },
@@ -27,8 +29,9 @@ const shadowAddresses = [
   { name: "ENS Open Peeps Avatars", address: "0x5784953dbeb3a764761b5bffe0f32e9c14e32482" },
   { name: "ENS Miniavs Avatars", address: "0x5A325AC1b2807825BDDecF8393Ff8eE5FE3EbA37" },
   { name: "ENS Robohash Monster Avatars", address: "0xc5d5859a6022c174b2ccabe2f92d7c5a1503f4cb" },
-  // { name: "On-chain Blockies", address: "0x7e902c638db299307565062dc7cd0397431bcb11" },
+  { name: "On-chain Blockies", address: "0x7e902c638db299307565062dc7cd0397431bcb11" },
 
+  //FIXME:mainnet chain address
   // goerli addrss
   // { name: "ENS Robohash Monster Avatars", address: "0xd4967857472c915bB2C66FD48095F1FAaC85B2C9" },
 ];
@@ -40,8 +43,10 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
   const [tokenList, setTokenList] = useState([]);
   const [tokenURIs, setTokenURIs] = useState([]);
   const [searchAddress, setSearchAddress] = useState(undefined);
+  console.log(`n-🔴 => Home => searchAddress`, searchAddress);
   const [balance, setBalance] = useState(undefined);
   const [toggleLoadMore, setToggleLoadMore] = useState(false);
+  const [ensName, setEnsName] = useState(undefined);
   const pageCountRef = useRef(0);
 
   /**
@@ -170,7 +175,9 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
   const onSetProfile = async item => {
     console.log(`n-🔴 => onSetProfile => item`, item);
 
-    const ENSContract = new ethers.Contract(ENS_RESOLVER_MAINNET, EnsGoerli.abi, userSigner);
+    //FIXME:mainnet chain address
+    const ENSContract = new ethers.Contract(ENS_RESOLVER_MAINNET, EnsMainnet.abi, userSigner);
+    // const ENSContract = new ethers.Contract(ENS_RESOLVER_GOERLI, EnsGoerli.abi, userSigner);
     var ensName = await localProvider.lookupAddress(searchAddress);
 
     const node = namehash.hash(ensName);
@@ -187,6 +194,16 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
       }
     });
     const setTextTxRcpt = await setTextTx;
+  };
+
+  const getEnsName = async address => {
+    var ensName = await localProvider.lookupAddress(address);
+    setEnsName(ensName);
+  };
+
+  const getEnsAddress = async ensName => {
+    var address = await localProvider.resolveName(ensName);
+    setSearchAddress(address);
   };
 
   /**
@@ -215,6 +232,32 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
     }
   }, [localProvider, readContracts, searchAddress]);
 
+  // load default wallet connected address
+  useEffect(() => {
+    if (address && readContracts && localProvider) {
+      setSearchAddress(address);
+    }
+  }, [localProvider, readContracts, address]);
+
+  // load  default nick.eth address
+  useEffect(() => {
+    if (address === undefined && readContracts && localProvider) {
+      getEnsAddress("nick.eth");
+    }
+  }, [localProvider, readContracts, address]);
+
+  useEffect(() => {
+    if (searchAddress && ethers.utils.isAddress(searchAddress)) {
+      getEnsName(searchAddress);
+    }
+  }, [searchAddress]);
+
+  useEffect(() => {
+    if (ensName === null) {
+      setTokenList([]);
+    }
+  }, [ensName]);
+
   /**
    on token uri load   tokens at start
   */
@@ -229,39 +272,28 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
   }, [toggleLoadMore]);
 
   return (
-    <div className="flex flex-col items-center ">
-      <div className="w-1/2">
-        <Title level={2}>Invisible NFT's</Title>
-        <Paragraph className="opacity-70">
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Non deleniti, vitae quo cumque, laboriosam minus
-          iste illo, dolores consequatur at quibusdam! Praesentium veniam eum hic dicta optio doloremque obcaecati
-          tenetur!
-        </Paragraph>
-      </div>
+    <div className="scrollHeight overflow-auto" id="scrollableDiv">
+      {/* <Button
+        onClick={async () => {
 
-      <div className="w-1/2 mt-5">
-        <AddressInput
-          placeholder="enter ens address"
-          autoFocus
-          // ensProvider={localProvider}
-          ensProvider={mainnetProvider}
-          address={searchAddress}
-          onChange={setSearchAddress}
-        />
-        {balance !== undefined && (
-          <div className="mt-2">
-            <span className="opacity-60">{balance * shadowAddresses.length} invisible nft's found</span>
-          </div>
-        )}
-      </div>
-
-      <div className="w-1/2 mt-10">
-        <div id="scrollableDiv" className="overflow-auto w-full max-h-96">
-          <InfiniteScroll
-            dataLength={tokenList.length}
-            next={onLoadMore}
-            hasMore={balance && balance >= LOAD_COUNT ? Number(balance) !== Number(pageCountRef.current) : false}
-            loader={
+          // let addrsss = await mainnetProvider.resolveName("ricmoo.eth");
+          // console.log(`n-🔴 => onClick={ => addrsss`, addrsss);
+          // const resolver = await mainnetProvider.getResolver("avsa.eth");
+          // console.log(`n-🔴 => resolver`, resolver);
+          // console.log(`n-🔴 => avatar`, avatar);
+          // const avatarMetaData = await resolver.getText("avatar");
+          // console.log(`Avatar Metadata: ${avatarMetaData}`);
+        }}
+      >
+        test
+      </Button> */}
+      <InfiniteScroll
+        dataLength={tokenList.length}
+        next={onLoadMore}
+        hasMore={balance && balance >= LOAD_COUNT ? Number(balance) !== Number(pageCountRef.current) : false}
+        loader={
+          <div className="flex flex-col items-center w-full">
+            <div className="w-1/2">
               <Skeleton
                 avatar
                 title
@@ -270,16 +302,59 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
                 }}
                 active
               />
-            }
-            endMessage={
-              balance !== undefined && (
+            </div>
+          </div>
+        }
+        endMessage={
+          balance !== undefined &&
+          ensName !== null && (
+            <div className="flex flex-col items-center w-full">
+              <div className="w-1/2">
                 <Divider plain className="opacity-70">
                   loaded all nft's
                 </Divider>
-              )
-            }
-            scrollableTarget="scrollableDiv"
-          >
+              </div>
+            </div>
+          )
+        }
+        scrollableTarget="scrollableDiv"
+      >
+        <div className="flex flex-col items-center w-full">
+          <div className="w-1/2">
+            <Title level={2}>Invisible NFT's</Title>
+            <Paragraph className="opacity-70">
+              Lorem ipsum dolor sit amet consectetur, adipisicing elit. Non deleniti, vitae quo cumque, laboriosam minus
+              iste illo, dolores consequatur at quibusdam! Praesentium veniam eum hic dicta optio doloremque obcaecati
+              tenetur!
+            </Paragraph>
+          </div>
+
+          <div className="w-1/2 mt-5">
+            <AddressInput
+              placeholder="enter ens address"
+              autoFocus
+              // ensProvider={localProvider}
+              //FIXME:mainnet chain address
+              ensProvider={mainnetProvider}
+              address={searchAddress}
+              onChange={setSearchAddress}
+              // disabled={!address}
+            />
+            {balance !== undefined && ensName !== undefined && (
+              <div className="mt-2">
+                <span className="opacity-60">
+                  {balance * shadowAddresses.length} invisible nft's found for{" "}
+                  <span className="text-blue-500"> {ensName === null ? address : ensName}</span>
+                </span>
+                {address === undefined && (
+                  <span className="text-yellow-500 mr-2"> (connect wallet to set profile)</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="w-1/2 mt-10">
+            {/* TOKEN LIST */}
             <List
               dataSource={tokenList}
               renderItem={item => (
@@ -295,10 +370,11 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
                   <List.Item
                     key={item.image}
                     actions={[
-                      address === searchAddress && (
+                      // address === searchAddress && (
+                      address !== undefined && (
                         <Tooltip title="Make this NFT visible on your account at opensea">
                           <Button type="link" onClick={() => onVisibleNFT(item)}>
-                            visible nft
+                            set visible
                           </Button>
                         </Tooltip>
                       ),
@@ -320,9 +396,15 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
                 </Skeleton>
               )}
             />
-          </InfiniteScroll>
+
+            {/* {!address && (
+              <>
+                <div className="text-center text-lg text-red-500">Connect with wallet !</div>
+              </>
+            )} */}
+          </div>
         </div>
-      </div>
+      </InfiniteScroll>
     </div>
   );
 }

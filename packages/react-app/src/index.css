@@ -9,3 +9,23 @@
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+body {
+  overflow: hidden; /* Hide scrollbars */
+}
+
+/* hiddden vertical scrollbar */
+/* html {
+    overflow: scroll;
+    overflow-x: hidden;
+}
+::-webkit-scrollbar {
+    width: 0;  
+    background: transparent;  
+}
+::-webkit-scrollbar-thumb {
+    background: #FF0000;
+} */
+
+.scrollHeight {
+  height: 90vh;
+}
