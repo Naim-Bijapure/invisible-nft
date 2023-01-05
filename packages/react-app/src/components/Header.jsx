@@ -15,7 +15,7 @@ export default function Header({ link, title, subTitle, ...props }) {
           </Title>
         </a>
         <Text type="secondary" style={{ textAlign: "left" }}>
-          {subTitle}
+          ENS Avatars for everyone !
         </Text>
       </div>
       {props.children}

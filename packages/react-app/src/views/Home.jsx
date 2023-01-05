@@ -12,7 +12,7 @@ import { AddressInput } from "../components";
 import EnsGoerli from "../abi's/ENS_Goerli.json";
 import EnsMainnet from "../abi's/ENS_Mainnet.json";
 
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Link } = Typography;
 
 const ENS_RESOLVER_GOERLI = "0xE264d5bb84bA3b8061ADC38D3D76e6674aB91852";
 const ENS_RESOLVER_MAINNET = "0x4976fb03c32e5b8cfe2b6ccb31c09ba78ebaba41";
@@ -321,12 +321,21 @@ function Home({ address, readContracts, localProvider, mainnetProvider, userSign
       >
         <div className="flex flex-col items-center w-full">
           <div className="w-1/2">
-            <Title level={2}>Invisible NFT's</Title>
+            <Title level={2}>The NFTs you didn't know you already have!</Title>
             <Paragraph className="opacity-70">
-              Lorem ipsum dolor sit amet consectetur, adipisicing elit. Non deleniti, vitae quo cumque, laboriosam minus
-              iste illo, dolores consequatur at quibusdam! Praesentium veniam eum hic dicta optio doloremque obcaecati
-              tenetur!
+              We deployed special NFTs that are automatically owned by every ENS domain holder. If you have an ENS
+              domain, you have one! These are tied (soulbound) to your ENS, meaning you can't transfer or sell them, and
+              if you transfer your ENS they will go with them. But you can already use them to set your ENS profile!
+              Click "Set profile" to add them as your ENS Avatar. Click “Set visible” to make them show on your open sea
+              or other NFT tracker collection (that's optional and doesn't change ownership or status)
             </Paragraph>
+            <a
+              href="https://etherscan.io/address/0x3be7b78a0677f95539c3aca821888b1a534afd68#code "
+              target="_blank"
+              rel="noreferrer"
+            >
+              deploy your own ENS Avatar contract
+            </a>
           </div>
 
           <div className="w-1/2 mt-5">
